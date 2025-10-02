@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		"target": "ES2020",
+		"useDefineForClassFields": true,
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		"noPropertyAccessFromIndexSignature": true,
+		"exactOptionalPropertyTypes": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"sourceMap": true,
+		"resolveJsonModule": true,
+		"lib": ["ES2020", "DOM", "DOM.Iterable"],
+		"baseUrl": ".",
+		"paths": {
+			"@src/*": ["src/*"],
+			"@scenes/*": ["src/scenes/*"],
+			"@ui/*": ["src/ui/*"]
+		}
+	},
+	"include": ["src"],
+	"references": []
+} 
