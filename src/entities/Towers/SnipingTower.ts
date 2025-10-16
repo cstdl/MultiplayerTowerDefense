@@ -12,8 +12,9 @@ export class SnipingTower extends Tower {
         super(scene, x, y, type)
         
         this.sprite.destroy()
-        this.sprite = scene.add.sprite(x, y, 'sniping-tower')
+        this.sprite = scene.add.sprite(x, y, 'tower1')
         this.sprite.setDepth(2)
+        this.sprite.setScale(0.1)
         
         this.laserEffect = scene.add.graphics()
         this.laserEffect.setDepth(3)

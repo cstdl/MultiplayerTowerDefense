@@ -11,10 +11,11 @@ export class AOETower extends Tower {
     constructor(scene: Phaser.Scene, x: number, y: number, type: TowerType) {
         // Call parent constructor but we'll override the sprite
         super(scene, x, y, type)
-        // Replace the sprite with the AOE tower texture
+        // Replace the sprite with the common tower1 texture
         this.sprite.destroy()
-        this.sprite = scene.add.sprite(x, y, 'aoe-tower')
+        this.sprite = scene.add.sprite(x, y, 'tower1')
         this.sprite.setDepth(2)
+        this.sprite.setScale(0.1)
         
         // Create a graphics object for the AOE effect (initially invisible)
         this.aoeEffect = scene.add.graphics()

@@ -13,18 +13,10 @@ export class ChainTower extends Tower {
         super(scene, x, y, type)
         
         this.sprite.destroy()
-        
-        const g = scene.add.graphics()
-        g.clear()
-        g.fillStyle(0x9966ff, 1)
-        g.fillRoundedRect(0, 0, 32, 32, 8)
-        g.lineStyle(2, 0xffffff, 1)
-        g.strokeCircle(16, 16, 10)
-        g.generateTexture('chain-tower', 32, 32)
-        g.destroy()
-        
-        this.sprite = scene.add.sprite(x, y, 'chain-tower')
+
+        this.sprite = scene.add.sprite(x, y, 'tower1')
         this.sprite.setDepth(2)
+        this.sprite.setScale(0.1)
         
         this.bulletEffect = scene.add.graphics()
         this.bulletEffect.setDepth(3)
