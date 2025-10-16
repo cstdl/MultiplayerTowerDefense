@@ -1,9 +1,9 @@
 import Phaser from 'phaser'
 import {Enemy} from '../entities/Enemy'
-import {Tower} from '../entities/Tower'
 import {Boss} from '../entities/Boss'
 import {PathGenerator} from './PathGenerator'
 import {TowerStore, TowerType} from '../services/TowerStore'
+import {Tower} from "../entities/Towers/Tower";
 
 export const GAME_EVENTS = {
     placeTowerToggle: 'ui.placeTowerToggle',

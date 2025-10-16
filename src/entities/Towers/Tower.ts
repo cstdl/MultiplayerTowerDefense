@@ -7,7 +7,7 @@ export class Tower {
 	private readonly range: number
 	private readonly fireRateMs: number
 	private readonly damage: number
-	private timeSinceShot = 0
+	protected timeSinceShot = 0
 	private scene: Phaser.Scene
 	public readonly type: TowerType
 
@@ -93,13 +93,13 @@ export class Tower {
 	private getAudioContext(): AudioContext | null {
 		const phaserSound = this.scene.sound as { context?: AudioContext }
 		const existingCtx = phaserSound?.context || window.audioCtx
-		
+
 		if (existingCtx) return existingCtx
 
 		try {
 			const AudioContextClass = window.AudioContext || window.webkitAudioContext
 			if (!AudioContextClass) return null
-			
+
 			const newCtx = new AudioContextClass()
 			window.audioCtx = newCtx
 			return newCtx
