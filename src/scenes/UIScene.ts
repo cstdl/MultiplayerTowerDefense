@@ -25,6 +25,7 @@ export class UIScene extends Phaser.Scene {
 		this.load.image('tower_rapid', 'assets/towers/tower_rapid.png')
 		this.load.image('tower_rapid_fire', 'assets/towers/tower_rapid_fire.png')
 		this.load.image('tower_explosive', 'assets/towers/tower_explosive.png')
+		this.load.image('tower_frost', 'assets/towers/tower_frost.png')
 	}
 
 	create(): void {
@@ -88,8 +89,8 @@ export class UIScene extends Phaser.Scene {
 
 	private createTowerStoreUI(): void {
 		const padding = 10
-		const cardWidth = 100
-		const cardHeight = 80
+		const cardWidth = 80 // Reduced from 100 to 80%
+		const cardHeight = 56 // Reduced from 80 to 80%
 		const cardSpacing = 6
 
 		// Create container for all tower cards
@@ -130,16 +131,6 @@ export class UIScene extends Phaser.Scene {
 		bg.setName('bg')
 		cardContainer.add(bg)
 
-		// Hotkey indicator at the top center
-		const keyText = this.add.text(-width / 2, 5, `[${towerType.key}]`, {
-			fontSize: '13px',
-			color: '#00d4ff',
-			fontFamily: 'monospace',
-			fontStyle: 'bold'
-		})
-		keyText.setOrigin(0.5, 0)
-		cardContainer.add(keyText)
-
 		// Tower preview sprite
 		let textureKey = 'tower_basic'
 		let scale = 0.15 // Much smaller scale for UI cards
@@ -160,18 +151,32 @@ export class UIScene extends Phaser.Scene {
 				textureKey = 'tower_explosive'
 				scale = 0.15
 				break
+			case TowerTypeID.FROST:
+				textureKey = 'tower_frost'
+				scale = 0.15
+				break
 			default:
 				textureKey = 'tower_basic'
 				scale = 0.15
 		}
-		const towerSprite = this.add.sprite(-width / 2, 30, textureKey)
+		const towerSprite = this.add.sprite(-width / 2, 24, textureKey) // Reduced from 30 to 24 (80%)
 		towerSprite.setScale(scale)
 		cardContainer.add(towerSprite)
 
+		// Hotkey indicator above the tower sprite
+		const keyText = this.add.text(-width / 2, 12, `[${towerType.key}]`, { // Reduced from 15 to 12 (80%)
+			fontSize: '11px', // Reduced from 13px to 11px (80%)
+			color: '#00d4ff',
+			fontFamily: 'monospace',
+			fontStyle: 'bold'
+		})
+		keyText.setOrigin(0.5, 0)
+		cardContainer.add(keyText)
+
 		// Tower name (shorter version)
 		const shortName = towerType.name.replace(' Tower', '')
-		const nameText = this.add.text(-width / 2, 46, shortName, {
-			fontSize: '10px',
+		const nameText = this.add.text(-width / 2, 37, shortName, { // Reduced from 46 to 37 (80%)
+			fontSize: '8px', // Reduced from 10px to 8px (80%)
 			color: '#ffffff',
 			fontFamily: 'monospace',
 			fontStyle: 'bold'
@@ -180,8 +185,8 @@ export class UIScene extends Phaser.Scene {
 		cardContainer.add(nameText)
 
 		// Cost
-		const costText = this.add.text(-width / 2, 59, `${towerType.cost}g`, {
-			fontSize: '9px',
+		const costText = this.add.text(-width / 2, 42, `${towerType.cost}g`, { // Reduced from 59 to 42 (80%)
+			fontSize: '7px', // Reduced from 9px to 5px (80%)
 			color: '#ffd700',
 			fontFamily: 'monospace'
 		})
@@ -190,8 +195,8 @@ export class UIScene extends Phaser.Scene {
 		cardContainer.add(costText)
 
 		// Stats (range, damage, fire rate)
-		const statsText = this.add.text(-width / 2, 69, `R:${Math.round(towerType.range / 100)} D:${towerType.damage} F:${Math.round(1000 / towerType.fireRateMs)}/s`, {
-			fontSize: '7px',
+		const statsText = this.add.text(-width / 2, 55, `R:${Math.round(towerType.range / 100)} D:${towerType.damage} F:${Math.round(1000 / towerType.fireRateMs)}/s`, { // Reduced from 69 to 55 (80%)
+			fontSize: '6px', // Reduced from 7px to 6px (80%)
 			color: '#aaaaaa',
 			fontFamily: 'monospace'
 		})
