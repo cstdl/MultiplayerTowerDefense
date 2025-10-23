@@ -6,6 +6,7 @@ import { TowerFactory } from "../entities/Towers/TowerFactory";
 import { WaveFactory } from "../entities/Factories/WaveFactory";
 import { Event } from "../entities/Events/Event";
 import { EventStore } from "../services/EventStore";
+import { AudioManager } from "../services/AudioManager";
 
 export const GAME_EVENTS = {
 	placeTowerToggle: 'ui.placeTowerToggle',
@@ -35,6 +36,7 @@ export class GameScene extends Phaser.Scene {
 	private activeEvents: Event[] = []
 	private ghostTower?: Phaser.GameObjects.Sprite | undefined
 	private waveFactory!: WaveFactory
+	private audioManager: AudioManager
 
 	private upgradeIndicators: Map<Tower, Phaser.GameObjects.Container> = new Map()
 
@@ -42,6 +44,7 @@ export class GameScene extends Phaser.Scene {
 		super(GameScene.KEY)
 		this.towerStore = TowerStore.getInstance()
 		this.eventStore = EventStore.getInstance()
+		this.audioManager = AudioManager.getInstance()
 	}
 
 	preload(): void {
@@ -116,6 +119,11 @@ export class GameScene extends Phaser.Scene {
 
 	create(): void {
 		this.cameras.main.setBackgroundColor('#0b1020')
+
+		// Add 'm' key listener to toggle mute
+		this.input.keyboard.on('keydown-M', () => {
+			this.audioManager.toggleMute()
+		})
 
 		// Add background image scaled to game size
 		const bg = this.add.image(this.scale.width / 2, this.scale.height / 2, 'background')
@@ -194,12 +202,12 @@ export class GameScene extends Phaser.Scene {
 
 		// Subscribe to UI toggle for placing towers (deprecated, keeping for backwards compatibility)
 		this.game.events.on(GAME_EVENTS.placeTowerToggle, this.onPlaceTowerToggle, this)
-		
+
 		// Subscribe to event selection from UI
 		this.game.events.on(GAME_EVENTS.eventTypeSelected, (event: Event | null) => {
 			this.selectEvent(event)
 		})
-		
+
 		// Subscribe to event activation from UI
 		this.game.events.on(GAME_EVENTS.eventActivated, () => {
 			if (this.selectedEvent) {
@@ -211,7 +219,7 @@ export class GameScene extends Phaser.Scene {
 		this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
 			const towerType = this.towerStore.getTowerTypeByKey(event.key)
 			const eventType = this.eventStore.getEventByKey(event.key)
-			
+
 			if (towerType) {
 				this.selectTowerType(towerType)
 			} else if (eventType) {
@@ -329,63 +337,63 @@ export class GameScene extends Phaser.Scene {
 		this.sortTowersByDepth();
 		this.updateUpgradeIndicators();
 	}
-	
+
 	// Method to check if a specific event type is active
 	public isEventActive(eventId: string): boolean {
 		return this.activeEvents.some(event => event.id === eventId);
 	}
-	
+
 	// Method to get enemies for events
 	public getEnemies() {
 		return this.waveFactory.getEnemies();
 	}
-	
+
 	// Method to get enemy factory for events
 	public getEnemyFactory() {
 		return this.waveFactory.getEnemyFactory();
 	}
-	
+
 	// Method to select an event
 	public selectEvent(event: Event | null): void {
 		this.selectedEvent = event;
 		this.selectedTowerType = null; // Deselect tower if an event is selected
-		
+
 		// Emit event selection event
 		this.game.events.emit(GAME_EVENTS.eventTypeSelected, event);
 	}
-	
+
 	// Method to activate the selected event
 	public activateSelectedEvent(): void {
 		if (!this.selectedEvent) return;
-		
+
 		// Check if player has enough gold
 		if (this.gold < this.selectedEvent.cost) return;
-		
+
 		// Deduct gold and activate event
 		this.gold -= this.selectedEvent.cost;
 		this.emitGold();
-		
+
 		// Activate the event
 		this.selectedEvent.activate(this);
 		this.activeEvents.push(this.selectedEvent);
-		
+
 		// Show activation message
 		this.showEventActivationMessage(this.selectedEvent);
-		
+
 		// Emit event activated event
 		this.game.events.emit(GAME_EVENTS.eventActivated, this.selectedEvent);
-		
+
 		// Deselect the event
 		this.selectEvent(null);
 	}
-	
+
 	// Display a temporary message when an event is activated
 	private showEventActivationMessage(event: Event): void {
 		// Create a text message that appears briefly when an event is activated
 		const text = this.add.text(
-			this.scale.width / 2, 
-			this.scale.height / 4, 
-			`${event.name} Activated!`, 
+			this.scale.width / 2,
+			this.scale.height / 4,
+			`${event.name} Activated!`,
 			{
 				fontFamily: 'Arial',
 				fontSize: '24px',
@@ -397,7 +405,7 @@ export class GameScene extends Phaser.Scene {
 		)
 		text.setOrigin(0.5)
 		text.setDepth(1000)
-		
+
 		// Fade in and out animation
 		this.tweens.add({
 			targets: text,
@@ -476,7 +484,7 @@ export class GameScene extends Phaser.Scene {
 		container.destroy()
 		this.upgradeIndicators.delete(tower)
 	}
-	
+
 	/**
 	 * Removes a tower from the game
 	 * @param tower The tower to remove
@@ -484,13 +492,13 @@ export class GameScene extends Phaser.Scene {
 	private removeTower(tower: Tower): void {
 		// Remove upgrade indicator if it exists
 		this.removeUpgradeIndicator(tower);
-		
+
 		// Remove from towers array
 		const index = this.towers.indexOf(tower);
 		if (index !== -1) {
 			this.towers.splice(index, 1);
 		}
-		
+
 		// Show destruction message
 		const text = this.add.text(
 			tower.sprite.x,
@@ -506,7 +514,7 @@ export class GameScene extends Phaser.Scene {
 		);
 		text.setOrigin(0.5);
 		text.setDepth(100);
-		
+
 		// Fade out and remove the message
 		this.tweens.add({
 			targets: text,

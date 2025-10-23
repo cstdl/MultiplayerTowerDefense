@@ -12,6 +12,7 @@ import { Unicorn } from '../Units/Unicorn';
 import { Zombie } from '../Units/Zombie';
 import { TowerAttacker } from '../Units/TowerAttacker';
 import { GAME_EVENTS } from '../../scenes/GameScene';
+import { AudioManager } from '../../services/AudioManager';
 
 export interface Enemy {
     sprite: Phaser.Physics.Arcade.Sprite;
@@ -32,20 +33,22 @@ export class EnemyFactory {
     private spawnTimer?: Phaser.Time.TimerEvent;
     private readonly pathPoints: Phaser.Math.Vector2[] = [];
     private goldEarningFunction: (isBoss: boolean) => number = (isBoss: boolean) => isBoss ? 100 : 10;
+    private audioManager: AudioManager;
 
     constructor(scene: Phaser.Scene, pathPoints: Phaser.Math.Vector2[]) {
         this.scene = scene;
         this.pathPoints = pathPoints;
+        this.audioManager = AudioManager.getInstance();
     }
 
     public getEnemies(): Enemy[] {
         return this.enemies;
     }
-    
+
     public getGoldEarningFunction(): (isBoss: boolean) => number {
         return this.goldEarningFunction;
     }
-    
+
     public setGoldEarningFunction(func: (isBoss: boolean) => number): void {
         this.goldEarningFunction = func;
     }
@@ -189,6 +192,9 @@ export class EnemyFactory {
     }
 
     public playPlop(): void {
+        // Don't play sound if muted
+        if (this.audioManager.isMuted()) return;
+
         const audioCtx = this.getAudioContext();
         if (!audioCtx) return;
 
