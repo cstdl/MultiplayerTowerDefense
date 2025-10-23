@@ -7,8 +7,10 @@ import { Cultist } from '../Units/Cultist';
 import { Demon } from '../Units/Demon';
 import { Imp } from '../Units/Imp';
 import { Skeleton } from '../Units/Skeleton';
+import { SkeletonArcher } from '../Units/SkeletonArcher';
 import { Unicorn } from '../Units/Unicorn';
 import { Zombie } from '../Units/Zombie';
+import { TowerAttacker } from '../Units/TowerAttacker';
 import { GAME_EVENTS } from '../../scenes/GameScene';
 
 export interface Enemy {
@@ -76,6 +78,8 @@ export class EnemyFactory {
             Demon,
             Imp,
             Skeleton,
+            SkeletonArcher,
+            TowerAttacker,
             Unicorn,
             Zombie
         ];
