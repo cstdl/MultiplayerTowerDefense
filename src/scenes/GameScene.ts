@@ -37,6 +37,7 @@ export class GameScene extends Phaser.Scene {
 	private ghostTower?: Phaser.GameObjects.Sprite | undefined
 	private waveFactory!: WaveFactory
 	private audioManager: AudioManager
+	private currentBackgroundType!: string
 
 	private upgradeIndicators: Map<Tower, Phaser.GameObjects.Container> = new Map()
 
@@ -58,6 +59,10 @@ export class GameScene extends Phaser.Scene {
 		this.towerStore = TowerStore.getInstance()
 		this.eventStore = EventStore.getInstance()
 		this.audioManager = AudioManager.getInstance()
+		
+		// Select random background type for this game
+		const backgroundTypes = ['original', 'beach', 'ice']
+		this.currentBackgroundType = backgroundTypes[Math.floor(Math.random() * backgroundTypes.length)]!
 	}
 
 	preload(): void {
@@ -83,6 +88,8 @@ export class GameScene extends Phaser.Scene {
 		this.load.image('tower_frost', 'assets/towers/tower_frost.png')
 		this.load.image('arrow', 'assets/projectiles/arrow.png')
 		this.load.image('background', 'assets/background.jpeg')
+		this.load.image('background_beach', 'assets/backgrounds/beach.jpeg')
+		this.load.image('background_ice', 'assets/backgrounds/ice.jpeg')
 		this.load.image('floor_tile', 'assets/floor_tile.jpeg')
 		this.load.image('upgrade_arrow', 'assets/indicators/upgrade_arrow.png')
 
@@ -176,8 +183,20 @@ export class GameScene extends Phaser.Scene {
 			this.arrowKeys.right = false
 		})
 
-		// Add background image scaled to game size
-		const bg = this.add.image(this.scale.width / 2, this.scale.height / 2, 'background')
+		// Add random background image scaled to game size
+		let bg: Phaser.GameObjects.Image
+		
+		if (this.currentBackgroundType === 'original') {
+			bg = this.add.image(this.scale.width / 2, this.scale.height / 2, 'background')
+		} else if (this.currentBackgroundType === 'beach') {
+			bg = this.add.image(this.scale.width / 2, this.scale.height / 2, 'background_beach')
+		} else if (this.currentBackgroundType === 'ice') {
+			bg = this.add.image(this.scale.width / 2, this.scale.height / 2, 'background_ice')
+		} else {
+			// Fallback to original
+			bg = this.add.image(this.scale.width / 2, this.scale.height / 2, 'background')
+		}
+		
 		bg.setDepth(-10)
 		const bgScaleX = this.scale.width / bg.width
 		const bgScaleY = this.scale.height / bg.height
