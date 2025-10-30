@@ -200,7 +200,7 @@ export class PathGenerator {
 			const sameHorizontalDir = isHorizontal1 && isHorizontal2 && ((dx1 > 0 && dx2 > 0) || (dx1 < 0 && dx2 < 0))
 			const sameVerticalDir = isVertical1 && isVertical2 && ((dy1 > 0 && dy2 > 0) || (dy1 < 0 && dy2 < 0))
 			
-			if (sameHorizontalDir || sameVerticalDir || segmentLength1 < minSegmentLength) {
+			if (sameHorizontalDir || sameVerticalDir || segmentLength1 < minSegmentLength || segmentLength2 < minSegmentLength) {
 				// Skip this point, it's redundant (Criterion 3)
 				continue
 			}
