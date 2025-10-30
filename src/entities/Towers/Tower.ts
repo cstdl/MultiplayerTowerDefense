@@ -2,6 +2,8 @@ import Phaser from 'phaser'
 import { Enemy } from '../Factories/EnemyFactory'
 import {TowerLevelUpgrade, TowerType} from '../../services/TowerStore'
 import { AudioManager } from '../../services/AudioManager'
+import { GameConfigService } from '../../services/GameConfigService'
+import { BrauseColorService } from '../../services/BrauseColorService'
 
 export class Tower {
 
@@ -11,6 +13,8 @@ export class Tower {
     protected scene: Phaser.Scene
     public readonly type: TowerType
     protected audioManager: AudioManager
+    protected gameConfigService: GameConfigService
+    protected brauseColorService: BrauseColorService
 
     protected range: number = 0
     protected fireRateMs: number = 0
@@ -24,11 +28,17 @@ export class Tower {
     constructor(scene: Phaser.Scene, x: number, y: number, type: TowerType) {
         this.scene = scene;
         this.type = type;
-        this.sprite = scene.add.sprite(x, y, 'tower_basic');
-        this.sprite.setDepth(2);
-        
-        // Initialize audio manager
+
+        // Initialize services
         this.audioManager = AudioManager.getInstance();
+        this.gameConfigService = GameConfigService.getInstance();
+        this.brauseColorService = BrauseColorService.getInstance();
+
+        // Create sprite with appropriate texture based on brause mode
+        const textureKey = 'tower_basic';
+        this.sprite = scene.add.sprite(x, y, this.getBrauseTexture(textureKey));
+        this.sprite.setDepth(2);
+        this.applyBrauseColor(this.sprite, textureKey);
 
         const levelUpdate = this.getCurrentStats();
 
@@ -66,7 +76,7 @@ export class Tower {
         if (!target) return
         this.timeSinceShot = 0
         this.shoot(target)
-        
+
         // Update HP text position
         if (this.hpText) {
             this.hpText.setPosition(this.sprite.x, this.sprite.y + 20);
@@ -92,10 +102,12 @@ export class Tower {
         this.playShootTone()
 
         // Visual bullet: tweened sprite that damages on arrival
-        const bullet = this.scene.add.sprite(this.sprite.x, this.sprite.y, 'arrow')
+        const bulletTextureKey = 'arrow';
+        const bullet = this.scene.add.sprite(this.sprite.x, this.sprite.y, this.getBrauseTexture(bulletTextureKey))
         bullet.setScale(0.03)
         bullet.setOrigin(0.5, 0.5)
         bullet.setDepth(3)
+        this.applyBrauseColor(bullet, bulletTextureKey)
         const duration = Math.max(120, Math.min(400, Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, target.sprite.x, target.sprite.y) * 4))
         const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, target.sprite.x, target.sprite.y)
         bullet.setRotation(angle - Math.PI / 2)
@@ -138,7 +150,7 @@ export class Tower {
     protected playShootTone(): void {
         // Don't play sound if muted
         if (this.audioManager.isMuted()) return
-        
+
         const audioCtx = this.getAudioContext()
         if (!audioCtx) return
 
@@ -228,6 +240,9 @@ export class Tower {
 		this.sprite.setTintFill(0xffff99)
 		this.scene.time.delayedCall(220, () => {
 			this.sprite.clearTint()
+			// Reapply Brause color after the upgrade effect
+			const textureKey = `tower_${this.type.id}`;
+			this.applyBrauseColor(this.sprite, textureKey);
 		})
 	}
 
@@ -235,13 +250,16 @@ export class Tower {
 		this.hp -= amount;
 
         this.updateHPDisplay();
-		
-		// Visual feedback for damage
+
+	// Visual feedback for damage
 		this.sprite.setTintFill(0xff0000); // Red tint
 		this.scene.time.delayedCall(100, () => {
 			this.sprite.clearTint();
+			// Reapply Brause color after the damage effect
+			const textureKey = `tower_${this.type.id}`;
+			this.applyBrauseColor(this.sprite, textureKey);
 		});
-		
+
 		// Check if tower is destroyed
 		if (this.hp <= 0) {
 			this.playDestroyEffect();
@@ -250,7 +268,7 @@ export class Tower {
 			}
 			return true;
 		}
-		
+
 		return false;
 	}
 
@@ -260,15 +278,32 @@ export class Tower {
 
 	private playDestroyEffect(): void {
 		// Create explosion effect
-		const particles = this.scene.add.particles(this.sprite.x, this.sprite.y, 'bullet', {
+		const bulletTextureKey = 'bullet';
+		const brauseTextureKey = this.getBrauseTexture(bulletTextureKey);
+
+		// Check if we need to apply a brause color
+		let tint;
+		if (this.gameConfigService.isBrauseMode() && brauseTextureKey === bulletTextureKey) {
+			// Get a random color from the BrauseColorService
+			tint = this.brauseColorService.getRandomColor();
+		}
+
+		const particleConfig: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig = {
 			speed: { min: 100, max: 200 },
 			angle: { min: 0, max: 360 },
 			scale: { start: 1, end: 0 },
 			lifespan: 800,
 			blendMode: 'ADD',
 			quantity: 20
-		});
-		
+		};
+
+		// Add tint if needed
+		if (tint) {
+			particleConfig.tint = tint;
+		}
+
+		const particles = this.scene.add.particles(this.sprite.x, this.sprite.y, brauseTextureKey, particleConfig);
+
 		// Fade out the tower
 		this.scene.tweens.add({
 			targets: this.sprite,
@@ -301,5 +336,55 @@ export class Tower {
 
     private buildHpText(): string {
         return `HP: ${this.hp}`;
+    }
+
+    /**
+     * Get the appropriate texture key based on brause mode
+     * If brause mode is enabled and a "_brause" version of the texture exists, use it
+     * Otherwise, use the original texture
+     * @param key The original texture key
+     * @returns The texture key to use
+     */
+    protected getBrauseTexture(key: string): string {
+        // If brause mode is not enabled, use the original texture
+        if (!this.gameConfigService.isBrauseMode()) {
+            return key;
+        }
+
+        // Check if a "_brause" version of the texture exists
+        const brauseKey = key + '_brause';
+        if (this.scene.textures.exists(brauseKey)) {
+            return brauseKey;
+        }
+
+        // If no "_brause" version exists, use the original texture
+        return key;
+    }
+
+    /**
+     * Apply a random brause color to a game object if it doesn't have a "_brause" texture
+     * @param gameObject The game object to apply the color to
+     * @param textureKey The texture key used for the game object
+     */
+    protected applyBrauseColor(gameObject: Phaser.GameObjects.GameObject, textureKey: string): void {
+        // Only apply color in brause mode
+        if (!this.gameConfigService.isBrauseMode()) {
+            return;
+        }
+
+        // Only apply color if there's no "_brause" version of the texture
+        const brauseKey = textureKey + '_brause';
+        if (this.scene.textures.exists(brauseKey)) {
+            return;
+        }
+
+        // Get a random color from the BrauseColorService
+        const randomColor = this.brauseColorService.getRandomColor();
+
+        // Apply the color to the game object
+        if (gameObject instanceof Phaser.GameObjects.Image || 
+            gameObject instanceof Phaser.GameObjects.Sprite) {
+            gameObject.setTint(randomColor);
+        }
     }
 }

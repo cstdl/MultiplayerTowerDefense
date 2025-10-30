@@ -1,5 +1,7 @@
 import Phaser from 'phaser'
 import { AudioManager } from '../services/AudioManager'
+import { GameConfigService } from '../services/GameConfigService'
+import { BrauseColorService } from '../services/BrauseColorService'
 
 export class StartScene extends Phaser.Scene {
 	static KEY = 'StartScene'
@@ -7,10 +9,16 @@ export class StartScene extends Phaser.Scene {
 	private musicNodes: AudioNode[] = []
 	private musicGain?: GainNode
 	private audioManager: AudioManager
+	private gameConfigService: GameConfigService
+	private brauseColorService: BrauseColorService
+	private keyBuffer: string = ''
+	private readonly brauseCode: string = 'brause'
 
 	constructor() {
 		super(StartScene.KEY)
 		this.audioManager = AudioManager.getInstance()
+		this.gameConfigService = GameConfigService.getInstance()
+		this.brauseColorService = BrauseColorService.getInstance()
 	}
 
 	create(): void {
@@ -23,6 +31,23 @@ export class StartScene extends Phaser.Scene {
 		// Add 'M' key listener to toggle mute
 		this.input.keyboard?.on('keydown-M', () => {
 			this.audioManager.toggleMute()
+		})
+
+		// Add keyboard listener for "brause" code
+		this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+			// Only track alphabetic characters
+			if (/^[a-z]$/i.test(event.key)) {
+				// Add the key to the buffer
+				this.keyBuffer += event.key.toLowerCase()
+
+				// Keep only the last 6 characters (length of "brause")
+				if (this.keyBuffer.length > this.brauseCode.length) {
+					this.keyBuffer = this.keyBuffer.substring(this.keyBuffer.length - this.brauseCode.length)
+				}
+
+				// Check if the buffer matches the code
+				this.checkBrauseCode()
+			}
 		})
 
 		// Start epic music after a brief delay to ensure audio context is ready
@@ -294,6 +319,77 @@ export class StartScene extends Phaser.Scene {
 		}
 	}
 
+	/**
+	 * Create particles in Brause colors that fly across the screen
+	 * These particles appear for a short time when Brause mode is activated
+	 */
+	private createBrauseParticles(): void {
+		// Get the brause colors from the BrauseColorService
+		const brauseColors = BrauseColorService.BRAUSE_COLORS
+
+		// Create a container for all particles to make cleanup easier
+		const particleContainer = this.add.container(0, 0)
+		particleContainer.setDepth(999) // Just below the text message
+
+		// Create more particles for a more dramatic effect
+		const particleCount = 50
+		const particles: Phaser.GameObjects.Arc[] = []
+
+		// Create particles with random positions, sizes, and colors
+		for (let i = 0; i < particleCount; i++) {
+			// Randomly position particles around the edges of the screen
+			let x, y
+			if (Math.random() < 0.5) {
+				// Position on left or right edge
+				x = Math.random() < 0.5 ? -20 : this.scale.width + 20
+				y = Phaser.Math.Between(0, this.scale.height)
+			} else {
+				// Position on top or bottom edge
+				x = Phaser.Math.Between(0, this.scale.width)
+				y = Math.random() < 0.5 ? -20 : this.scale.height + 20
+			}
+
+			// Random size (larger than background particles)
+			const size = Phaser.Math.Between(3, 8)
+
+			// Random Brause color
+			const color = brauseColors[Math.floor(Math.random() * brauseColors.length)]
+
+			// Create the particle
+			const particle = this.add.circle(x, y, size, color, 0.8)
+			particles.push(particle)
+			particleContainer.add(particle)
+
+			// Calculate a random destination point on the opposite side of the screen
+			const destX = x < this.scale.width / 2 ? 
+				this.scale.width + 50 : -50
+			const destY = y < this.scale.height / 2 ? 
+				this.scale.height + 50 : -50
+
+			// Add some randomness to the destination
+			const randomOffsetX = Phaser.Math.Between(-200, 200)
+			const randomOffsetY = Phaser.Math.Between(-200, 200)
+
+			// Animation: fly across the screen with some rotation and scaling
+			this.tweens.add({
+				targets: particle,
+				x: destX + randomOffsetX,
+				y: destY + randomOffsetY,
+				scale: { from: 0.5, to: 1.5 },
+				alpha: { from: 0, to: 0.8, duration: 300, yoyo: true, hold: 1000 },
+				angle: Phaser.Math.Between(-180, 180),
+				duration: Phaser.Math.Between(2000, 4000),
+				ease: 'Sine.easeInOut',
+				delay: Phaser.Math.Between(0, 1000)
+			})
+		}
+
+		// Destroy all particles after a few seconds
+		this.time.delayedCall(5000, () => {
+			particleContainer.destroy()
+		})
+	}
+
 	private startGame(): void {
 		// Play funny start sound!
 		this.playStartSound()
@@ -378,16 +474,16 @@ export class StartScene extends Phaser.Scene {
 
 	private getAudioContext(): AudioContext | null {
 		const phaserSound = this.sound as { context?: AudioContext }
-		const existingCtx = phaserSound?.context || (window as any).audioCtx
+		const existingCtx = phaserSound?.context || window.audioCtx
 
 		if (existingCtx) return existingCtx
 
 		try {
-			const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
+			const AudioContextClass = window.AudioContext || window.webkitAudioContext
 			if (!AudioContextClass) return null
 
 			const newCtx = new AudioContextClass()
-			;(window as any).audioCtx = newCtx
+			window.audioCtx = newCtx
 			return newCtx
 		} catch (error) {
 			return null
@@ -577,5 +673,196 @@ export class StartScene extends Phaser.Scene {
 			// Stop this scene and start the controls scene
 			this.scene.start('ControlsScene')
 		})
+	}
+
+	/**
+	 * Check if the key buffer matches the "brause" code and toggle brause mode if it does
+	 */
+	private checkBrauseCode(): void {
+		if (this.keyBuffer === this.brauseCode) {
+			// Toggle brause mode
+			const isBrauseMode = this.gameConfigService.toggleBrauseMode()
+
+			// Get the brause colors from the BrauseColorService
+			const brauseColors = BrauseColorService.BRAUSE_COLORS
+
+			// Show feedback message
+			const statusText = isBrauseMode ? 'BRAUSE MODE ACTIVATED!' : 'BRAUSE MODE DEACTIVATED!'
+
+			// Use a random Brause color for the activated message, or the original color for deactivated
+			let color: string
+			if (isBrauseMode) {
+				// Select a random Brause color and convert to CSS color string
+				const randomColor = brauseColors[Math.floor(Math.random() * brauseColors.length)]
+				color = '#' + randomColor.toString(16).padStart(6, '0')
+			} else {
+				color = '#00ffff' // Original color for deactivated
+			}
+
+			const text = this.add.text(
+				this.scale.width / 2,
+				this.scale.height / 6,
+				statusText,
+				{
+					fontFamily: 'Arial, sans-serif',
+					fontSize: '48px',
+					color: color,
+					stroke: '#000000',
+					strokeThickness: 5,
+					shadow: { color: '#000000', blur: 10, stroke: true, fill: true },
+					resolution: 2
+				}
+			)
+			text.setOrigin(0.5)
+			text.setDepth(1000)
+
+			// Fade in and out animation
+			this.tweens.add({
+				targets: text,
+				alpha: { from: 0, to: 1 },
+				duration: 500,
+				yoyo: true,
+				hold: 1000,
+				onComplete: () => {
+					text.destroy()
+				}
+			})
+
+			// Create particles if Brause mode is activated
+			if (isBrauseMode) {
+				this.createBrauseParticles()
+				// Play epic jingle when Brause mode is activated
+				this.playBrauseJingle()
+			}
+
+			// Reset the key buffer
+			this.keyBuffer = ''
+
+			// Restart active game scenes to refresh textures
+			this.restartActiveScenes()
+		}
+	}
+
+	/**
+	 * Play an epic jingle when Brause mode is activated
+	 */
+	private playBrauseJingle(): void {
+		// Don't play sound if muted
+		if (this.audioManager.isMuted()) return
+
+		const ctx = this.audioContext || this.getAudioContext()
+		if (!ctx) return
+
+		// Epic jingle duration
+		const duration = 1.5
+		const startTime = ctx.currentTime
+
+		// Create a powerful bass sound
+		const bass = ctx.createOscillator()
+		bass.type = 'sine'
+		bass.frequency.setValueAtTime(80, startTime)
+		bass.frequency.exponentialRampToValueAtTime(120, startTime + 0.3)
+		bass.frequency.exponentialRampToValueAtTime(80, startTime + 0.6)
+
+		const bassGain = ctx.createGain()
+		bassGain.gain.setValueAtTime(0.3, startTime)
+		bassGain.gain.exponentialRampToValueAtTime(0.1, startTime + 0.6)
+		bassGain.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
+
+		bass.connect(bassGain)
+		bassGain.connect(ctx.destination)
+		bass.start(startTime)
+		bass.stop(startTime + duration)
+
+		// Create a triumphant melody
+		const notes = [
+			{ freq: 523.25, start: 0.0, duration: 0.2 },  // C5
+			{ freq: 659.25, start: 0.2, duration: 0.2 },  // E5
+			{ freq: 783.99, start: 0.4, duration: 0.4 },  // G5
+			{ freq: 1046.50, start: 0.8, duration: 0.7 }  // C6 (held longer for dramatic effect)
+		]
+
+		notes.forEach(note => {
+			const osc = ctx.createOscillator()
+			osc.type = 'square'
+			osc.frequency.setValueAtTime(note.freq, startTime + note.start)
+
+			const gain = ctx.createGain()
+			gain.gain.setValueAtTime(0.001, startTime + note.start)
+			gain.gain.exponentialRampToValueAtTime(0.15, startTime + note.start + 0.05)
+			gain.gain.exponentialRampToValueAtTime(0.001, startTime + note.start + note.duration)
+
+			osc.connect(gain)
+			gain.connect(ctx.destination)
+			osc.start(startTime + note.start)
+			osc.stop(startTime + note.start + note.duration)
+		})
+
+		// Add some sparkle effects (high frequency sounds)
+		for (let i = 0; i < 8; i++) {
+			const sparkle = ctx.createOscillator()
+			sparkle.type = 'sine'
+
+			// Random high frequency
+			const freq = 2000 + Math.random() * 3000
+			const sparkleStart = startTime + 0.8 + (i * 0.05)
+
+			sparkle.frequency.setValueAtTime(freq, sparkleStart)
+			sparkle.frequency.exponentialRampToValueAtTime(freq * 1.5, sparkleStart + 0.1)
+
+			const sparkleGain = ctx.createGain()
+			sparkleGain.gain.setValueAtTime(0.001, sparkleStart)
+			sparkleGain.gain.exponentialRampToValueAtTime(0.05, sparkleStart + 0.02)
+			sparkleGain.gain.exponentialRampToValueAtTime(0.001, sparkleStart + 0.1)
+
+			sparkle.connect(sparkleGain)
+			sparkleGain.connect(ctx.destination)
+			sparkle.start(sparkleStart)
+			sparkle.stop(sparkleStart + 0.1)
+		}
+
+		// Add a final chord for resolution
+		const finalChord = [
+			{ freq: 523.25, gain: 0.1 },  // C5
+			{ freq: 659.25, gain: 0.08 }, // E5
+			{ freq: 783.99, gain: 0.08 }, // G5
+			{ freq: 1046.50, gain: 0.06 } // C6
+		]
+
+		finalChord.forEach(note => {
+			const osc = ctx.createOscillator()
+			osc.type = 'triangle'
+			osc.frequency.setValueAtTime(note.freq, startTime + 1.2)
+
+			const gain = ctx.createGain()
+			gain.gain.setValueAtTime(0.001, startTime + 1.2)
+			gain.gain.exponentialRampToValueAtTime(note.gain, startTime + 1.3)
+			gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
+
+			osc.connect(gain)
+			gain.connect(ctx.destination)
+			osc.start(startTime + 1.2)
+			osc.stop(startTime + duration)
+		})
+	}
+
+	private restartActiveScenes(): void {
+		// Check if game scenes are active
+		const gameSceneActive = this.scene.isActive('GameScene')
+		const uiSceneActive = this.scene.isActive('UIScene')
+		const statisticsSceneActive = this.scene.isActive('StatisticsScene')
+
+		// If any game scene is active, restart all active scenes
+		if (gameSceneActive || uiSceneActive || statisticsSceneActive) {
+			// Stop all active scenes
+			if (gameSceneActive) this.scene.stop('GameScene')
+			if (uiSceneActive) this.scene.stop('UIScene')
+			if (statisticsSceneActive) this.scene.stop('StatisticsScene')
+
+			// Relaunch all previously active scenes
+			if (gameSceneActive) this.scene.launch('GameScene')
+			if (uiSceneActive) this.scene.launch('UIScene')
+			if (statisticsSceneActive) this.scene.launch('StatisticsScene')
+		}
 	}
 }
